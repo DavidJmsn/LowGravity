@@ -1,10 +1,14 @@
 # Load required packages
 library(shiny)
 library(shinyMobile)
+library(bigrquery)
+library(data.table)
+
+dataset <- "black-copilot-334517.workouts"
 
 # Define UI for the workout tracker app with a compact mobile layout
 ui <- f7Page(
-  title = "Workout Tracker",
+  title = "Low Gravity",
   options = list(theme = 'ios'),
   f7TabLayout(
     panels = tagList(
@@ -17,7 +21,7 @@ ui <- f7Page(
         )
       )
     ),
-    navbar = f7Navbar(title = "Workout Tracker", rightPanel = TRUE),
+    navbar = f7Navbar(title = "Low Gravity", rightPanel = TRUE),
     f7Tabs(
       id = "tabset",
       animated = TRUE,
@@ -88,7 +92,7 @@ ui <- f7Page(
         title = "History",
         icon = f7Icon("timer"),
         f7Card(
-          
+          tableOutput("old_workouts")
         )
       )
     )
@@ -100,6 +104,7 @@ server <- function(input, output, session) {
   workout_log <- reactiveValues(
     df = data.frame(
       date       = as.Date(character()),
+      workout_name = character(),
       workout    = character(),
       set        = numeric(),
       reps       = character(),
@@ -116,6 +121,7 @@ server <- function(input, output, session) {
     
     new_row <- data.frame(
       date       = as.Date(input$date),
+      workout_name = input$workout_name,
       workout    = input$exercise,
       set        = as.numeric(input$set),
       reps       = input$reps,
@@ -165,10 +171,21 @@ server <- function(input, output, session) {
         title = "Notification",
         titleRightText = "now"
       )
+      # insert_upload_job("black-copilot-344517", "workouts", paste0(input$date, "_", input$workout_name), workout_log$df)
+      bq_table_upload(paste0(dataset, ".", input$date, "_", input$workout_name), workout_log$df)
+      
     } else {
       f7Toast(text = paste("Canceled ending workout"))
     }
 
+  })
+  
+  old_df <- reactive({
+    list2DF(transpose(bq_dataset_tables(dataset)))
+  })
+  
+  output$old_workouts <- renderTable({
+    old_df()
   })
 }
 
