@@ -145,6 +145,30 @@ server <- function(input, output, session) {
   output$workout_table <- renderTable({
     workout_log$df[, c("workout", "set", "reps", "resistance")]
   })
+  
+  observeEvent(input$end_workout, {
+    f7Dialog(
+      id = "end_confirm",
+      title = "End workout?",
+      type = "confirm",
+      text = "Click confirm to end and save workout",
+    )
+  })
+  
+  observeEvent(input$end_confirm, {
+    print(input$end_confirm)
+    if(input$end_confirm == TRUE){
+      f7Notif(
+        text = "Your workout has been saved",
+        icon = f7Icon("bolt_fill"),
+        title = "Notification",
+        titleRightText = "now"
+      )
+    } else {
+      f7Toast(text = paste("Canceled ending workout"))
+    }
+
+  })
 }
 
 # Run the Shiny app
