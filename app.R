@@ -9,70 +9,71 @@ ui <- f7Page(
   f7SingleLayout(
     navbar = f7Navbar(
       title = "Workout Tracker",
-      # Quit button on top-right
-      f7Button(
-        inputId = "quit",
-        icon = f7Icon("xmark_circle"),
-        color = "red",
-        fill = FALSE
+      rightPanel = TRUE
+    ),
+    f7Panel(
+      title = "Quit",
+      side = "right",
+      effect = "floating",
+      f7Block(
+        # Quit button on top-right
+        f7Button(
+          inputId = "quit",
+          icon = f7Icon("xmark_circle"),
+          color = "red",
+          fill = FALSE
+        )
       )
     ),
-    # Input block
+    # Compact input block: grid with 2 columns
     f7Block(
       strong = TRUE,
       inset = TRUE,
-      f7Text(
-        inputId = "date",
-        label = "Date",
-        value = as.character(Sys.Date()),
-        placeholder = "YYYY-MM-DD"
-      ),
-      f7Text(
-        inputId = "exercise",
-        label = "Exercise",
-        placeholder = "e.g., pullup, run"
-      ),
-      f7Text(
-        inputId = "set",
-        label = "Set",
-        placeholder = "e.g., 1, 2.5"
-      ),
-      f7Text(
-        inputId = "reps",
-        label = "Reps / Time",
-        placeholder = "e.g., 12, 7:43"
-      ),
-      fluidRow(
-        column(
-          width = 6,
-          f7Text(
-            inputId = "resistance",
-            label = "Resistance",
-            placeholder = "e.g., 50"
-          )
+      f7Grid(
+        cols = 2, gap = TRUE,
+        f7Text(
+          inputId = "date",
+          label = "Date",  # COMMENT: consider f7DatePicker for built-in validation
+          value = as.character(Sys.Date()),
+          placeholder = "YYYY-MM-DD"
         ),
-        column(
-          width = 6,
-          f7Select(
-            inputId = "unit",
-            label = "Units",
-            choices = c("lbs", "Kg", "Metres", "Km", "Sec", "Min", "Other"),
-            selected = "lbs"
-          ),
-          # Show custom unit text when "Other" is selected
-          conditionalPanel(
-            condition = "input.unit == 'Other'",
-            f7Text(
-              inputId = "unit_other",
-              label = "Specify unit",
-              placeholder = "Specify unit"
-            )
+        f7Text(
+          inputId = "exercise",
+          label = "Exercise",
+          placeholder = "e.g., pullup, run"
+        ),
+        f7Text(
+          inputId = "set",
+          label = "Set",
+          placeholder = "e.g., 1, 2.5"
+        ),
+        f7Text(
+          inputId = "reps",
+          label = "Reps / Time",
+          placeholder = "e.g., 12, 7:43"
+        ),
+        f7Text(
+          inputId = "resistance",
+          label = "Resistance",
+          placeholder = "e.g., 50"
+        ),
+        f7Select(
+          inputId = "unit",
+          label = "Units",
+          choices = c("lbs", "Kg", "Metres", "Km", "Sec", "Min", "Other"),
+          selected = "lbs"
+        ),
+        conditionalPanel(
+          condition = "input.unit == 'Other'",
+          f7Text(
+            inputId = "unit_other",
+            placeholder = "Specify unit"
           )
-        )
+        )  # COMMENT: validate unit_other when 'Other' is selected to avoid empty unit
       ),
       f7Slider(
         inputId = "effort",
-        label = "Perceived Effort",
+        label = "Effort",
         min = 1,
         max = 10,
         value = 5,
@@ -88,17 +89,18 @@ ui <- f7Page(
         fill = TRUE
       )
     ),
+    # Display current workout log
     f7Block(
       strong = TRUE,
       inset = TRUE,
-      tableOutput("workout_table")
+      tableOutput("workout_table")  # COMMENT: consider DT::renderDataTable for interactivity
     )
   )
 )
 
 # Define server logic
 server <- function(input, output, session) {
-  # Initialize reactiveValues to store the workout log
+  # COMMENT: rbind on reactiveValues can be inefficient for many rows; consider reactiveVal(list()) or data.table
   workout_log <- reactiveValues(
     df = data.frame(
       date       = as.Date(character()),
@@ -112,7 +114,6 @@ server <- function(input, output, session) {
     )
   )
   
-  # Observe Add Set button click and append a new row
   observeEvent(input$add_set, {
     req(
       input$date,
@@ -122,12 +123,11 @@ server <- function(input, output, session) {
       input$resistance,
       input$unit
     )
-    # Determine final unit (custom if Other)
     unit_value <- if (input$unit == "Other") input$unit_other else input$unit
     
-    # Create new row, coercing inputs as needed
+    # Create and append new entry
     new_row <- data.frame(
-      date       = as.Date(input$date),
+      date       = as.Date(input$date),  # COMMENT: wrap in tryCatch to catch invalid dates
       workout    = input$exercise,
       set        = as.numeric(input$set),
       reps       = input$reps,
@@ -136,55 +136,20 @@ server <- function(input, output, session) {
       effort     = input$effort,
       stringsAsFactors = FALSE
     )
-    
-    # Append to log
     workout_log$df <- rbind(workout_log$df, new_row)
     
-    # Clear inputs (date remains)
-    updateF7Text(
-      session = session,
-      inputId = "exercise",
-      value   = ""
-    )
-    updateF7Text(
-      session = session,
-      inputId = "set",
-      value   = ""
-    )
-    updateF7Text(
-      session = session,
-      inputId = "reps",
-      value   = ""
-    )
-    updateF7Text(
-      session = session,
-      inputId = "resistance",
-      value   = ""
-    )
-    updateF7Select(
-      session = session,
-      inputId = "unit",
-      selected = "lbs"
-    )
-    updateF7Text(
-      session = session,
-      inputId = "unit_other",
-      value   = ""
-    )
-    updateF7Slider(
-      session = session,
-      inputId = "effort",
-      value   = 5
-    )
+    # Reset inputs
+    updateF7Text(session, "exercise", value = "")
+    updateF7Text(session, "set", value = "")
+    updateF7Text(session, "reps", value = "")
+    updateF7Text(session, "resistance", value = "")
+    updateF7Select(session, "unit", selected = "lbs")
+    updateF7Text(session, "unit_other", value = "")
+    updateF7Slider(session, "effort", value = 5)
   })
   
-  # Quit button closes the app
-  observeEvent(
-    eventExpr = input$quit,
-    handlerExpr = stopApp()
-  )
+  observeEvent(input$quit, stopApp())
   
-  # Render the workout log as a table
   output$workout_table <- renderTable({
     workout_log$df[, c("workout", "set", "reps", "resistance")]
   })
