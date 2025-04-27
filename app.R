@@ -35,7 +35,7 @@ ui <- f7Page(
             cols = 2,
             gap = TRUE,
             f7DatePicker(inputId = "date", label = NULL, placeholder = as.character(Sys.Date())),
-            f7Toggle(inputId = "auto_inc", label = ""),
+            f7Toggle(inputId = "auto_inc", label = "Keep inputs"),
             f7Select(
               inputId = "exercise",
               label = NULL,
@@ -60,7 +60,7 @@ ui <- f7Page(
           # Effort slider and add button
           f7Slider(
             inputId = "effort",
-            label = NULL,
+            label = "Effort",
             min = 1, max = 10,
             value = 5, step = 1,
             scale = TRUE, scaleSteps = 9, scaleSubSteps = 0
