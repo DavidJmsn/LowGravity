@@ -36,6 +36,7 @@ ui <- f7Page(
             gap = TRUE,
             f7DatePicker(inputId = "date", label = NULL, placeholder = as.character(Sys.Date())),
             f7Toggle(inputId = "auto_inc", label = "Keep inputs"),
+            f7Text(inputId = "workout_name", label = NULL, placeholder = "Workout Name"),
             f7Select(
               inputId = "exercise",
               label = NULL,
