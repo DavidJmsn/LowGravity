@@ -13,7 +13,7 @@ ui <- f7Page(
         side = "right",
         effect = "cover",
         f7Block(
-          f7Button(inputId = "quit", icon = f7Icon("xmark_circle"), color = "red", fill = TRUE)
+          f7Button(inputId = "quit", icon = f7Icon("xmark_circle_fill"), color = "red", fill = TRUE)
         )
       )
     ),
@@ -22,11 +22,11 @@ ui <- f7Page(
       id = "tabset",
       animated = TRUE,
       style = "toolbar",
-      # Log entry tab with compact grid-based inputs
+      # new_set entry tab with compact grid-based inputs
       f7Tab(
-        tabName = "log",
-        title = "Log",
-        icon = f7Icon("edit"),
+        tabName = "new_set",
+        title = "New Set",
+        icon = f7Icon("text_badge_plus"),
         active = TRUE,
         f7List(
           inset = FALSE,
@@ -68,15 +68,26 @@ ui <- f7Page(
           f7Button(inputId = "add_set", label = "Add Set", icon = f7Icon("plus"), fill = TRUE)
         )
       ),
-      # History tab
+      # workout tab
       f7Tab(
-        tabName = "history",
-        title = "History",
-        icon = f7Icon("list"),
+        tabName = "workout",
+        title = "Workout",
+        icon = f7Icon("play"), # "play_pause"
         f7Block(
           inset = TRUE,
           strong = TRUE,
           tableOutput("workout_table")
+        ),
+        f7Card(
+          f7Button(inputId = "end_workout", label = "End Workout", icon = f7Icon("flag_circle_fill"))
+        )
+      ),
+      f7Tab(
+        tabName = "history", 
+        title = "History",
+        icon = f7Icon("timer"),
+        f7Card(
+          
         )
       )
     )
