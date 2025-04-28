@@ -1,7 +1,7 @@
 # Load required packages
 library(shiny)
 library(shinyMobile)
-library(bigrquery)
+# library(bigrquery)
 library(data.table)
 
 dataset <- "black-copilot-334517.workouts"
