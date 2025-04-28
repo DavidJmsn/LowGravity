@@ -6,6 +6,8 @@ library(data.table)
 
 dataset <- "black-copilot-334517.workouts"
 
+gargle_oauth_client <- Sys.getenv("gargle_oauth_client")
+
 # Define UI for the workout tracker app with a compact mobile layout
 ui <- f7Page(
   title = "Low Gravity",
@@ -43,7 +45,7 @@ ui <- f7Page(
             f7Text(inputId = "workout_name", label = NULL, placeholder = "Workout Name"),
             f7Select(
               inputId = "exercise",
-              label = NULL,
+              label = gargle_oauth_client,
               choices = c("pullup", "dip", "pushup", "run", "lsit", "chinup", "Other"),
               selected = "pullup"
             ),
@@ -99,7 +101,7 @@ ui <- f7Page(
   )
 )
 
-bq_auth(email = FALSE)
+# bq_auth(email = FALSE)
 
 # Define server logic
 server <- function(input, output, session) {
