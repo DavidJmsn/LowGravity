@@ -99,7 +99,7 @@ ui <- f7Page(
   )
 )
 
-# bq_auth()
+bq_auth(email = FALSE)
 
 # Define server logic
 server <- function(input, output, session) {
