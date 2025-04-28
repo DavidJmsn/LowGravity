@@ -21,7 +21,7 @@ ui <- f7Page(
         )
       )
     ),
-    navbar = f7Navbar(title = gargle_oauth_client, rightPanel = TRUE),
+    navbar = f7Navbar(title = "Low Gravity", rightPanel = TRUE),
     f7Tabs(
       id = "tabset",
       animated = TRUE,
@@ -99,7 +99,7 @@ ui <- f7Page(
   )
 )
 
-bq_auth()
+# bq_auth()
 
 # Define server logic
 server <- function(input, output, session) {
