@@ -3,6 +3,7 @@ library(shiny)
 library(shinyMobile)
 library(bigrquery)
 library(data.table)
+library(tapLock)
 
 dataset <- "black-copilot-334517.workouts"
 
