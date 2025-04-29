@@ -107,8 +107,6 @@ ui <- f7Page(
   )
 )
 
-# bq_auth(email = FALSE)
-
 # Define server logic
 server <- function(input, output, session) {
   workout_log <- reactiveValues(
@@ -200,7 +198,6 @@ server <- function(input, output, session) {
 }
 
 # Run the Shiny app
-# shinyApp(ui, server)
 shinyApp(ui, server) |>
   tower::create_tower() |>
   tapLock::add_auth_layers(auth_config) |>
