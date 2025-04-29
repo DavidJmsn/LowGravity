@@ -200,4 +200,8 @@ server <- function(input, output, session) {
 }
 
 # Run the Shiny app
-shinyApp(ui, server)
+# shinyApp(ui, server)
+shinyApp(ui, server) |>
+  tower::create_tower() |>
+  tapLock::add_auth_layers(auth_config) |>
+  tower::build_tower()
