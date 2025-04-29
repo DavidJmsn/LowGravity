@@ -6,7 +6,12 @@ library(data.table)
 
 dataset <- "black-copilot-334517.workouts"
 
-gargle_oauth_client <- Sys.getenv("gargle_oauth_client")
+auth_config <- new_openid_config(
+  provider = "google",
+  client_id = Sys.getenv("client_id"),
+  client_secret = Sys.getenv("client_secret"),
+  app_url = Sys.getenv("shiny_app_url")
+)
 
 # Define UI for the workout tracker app with a compact mobile layout
 ui <- f7Page(
@@ -45,7 +50,7 @@ ui <- f7Page(
             f7Text(inputId = "workout_name", label = NULL, placeholder = "Workout Name"),
             f7Select(
               inputId = "exercise",
-              label = gargle_oauth_client,
+              label = NULL,
               choices = c("pullup", "dip", "pushup", "run", "lsit", "chinup", "Other"),
               selected = "pullup"
             ),
