@@ -1,44 +1,33 @@
+rm(list = ls())
 # Load required packages
 library(shiny)
 library(shinyMobile)
 library(bigrquery)
 library(data.table)
+library(gargle)
 
-# Configuration setup 
-# For local development, we'll use a more flexible approach
-is_local <- Sys.getenv("R_CONFIG_ACTIVE") == "local" || Sys.getenv("SHINY_PORT") == ""
+options(shiny.launch.browser = TRUE)
 
-# Create a function to handle BigQuery authentication
-setup_bigquery_auth <- function() {
-  if (is_local) {
-    # For local development, use loopback IP flow (not OOB which is deprecated)
-    # Set up a local redirect URI using localhost
-    options(gargle_oauth_email = TRUE)  # Force selection of account
-    bq_auth(use_oob = FALSE)
-    message("Using localhost redirect authentication for local development")
-  } else {
-    # For deployed app, use service account or configured OAuth
-    service_key <- Sys.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-    if (file.exists(service_key)) {
-      bq_auth(path = service_key)
-      message("Using service account authentication")
-    } else {
-      # Fall back to standard OAuth
-      bq_auth(
-        client_id = Sys.getenv("client_id"),
-        client_secret = Sys.getenv("client_secret")
-      )
-      message("Using standard OAuth authentication")
-    }
-  }
-}
+dataset <- "black-copilot-334517.workouts"
 
-# Call authentication setup at startup
-setup_bigquery_auth()
+# Set your Google Cloud project ID and credentials
+project_id <- Sys.getenv("project_id")
+client_id <- Sys.getenv("client_id")
+client_secret <- Sys.getenv("client_secret")
 
-# Define project and dataset for BigQuery - FIXED
-project_id <- "black-copilot-334517"
-dataset_id <- "workouts"
+# Clear any previous authentication
+bigrquery::bq_deauth()
+
+json <- Sys.getenv("service_account")
+
+# 2. Build a service-account token
+token <- gargle::credentials_service_account(
+  scopes = c("https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/bigquery"),
+  path = json
+)
+
+# 3. Use that token for authentication
+bigrquery::bq_auth(token = token)
 
 # Define UI for the workout tracker app with a compact mobile layout
 ui <- f7Page(
@@ -135,26 +124,7 @@ ui <- f7Page(
 
 # Define server logic
 server <- function(input, output, session) {
-  # Check BigQuery connection at startup
-  connection_status <- tryCatch({
-    bq_projects() # Simple operation to test connection
-    list(success = TRUE, message = "Connected to BigQuery")
-  }, error = function(e) {
-    list(success = FALSE, message = paste("BigQuery Error:", e$message))
-  })
-  
-  # Show connection status
-  observe({
-    if (!connection_status$success) {
-      f7Dialog(
-        id = "connection_error",
-        title = "Connection Error",
-        type = "alert",
-        text = connection_status$message
-      )
-    }
-  })
-  
+
   workout_log <- reactiveValues(
     df = data.frame(
       date       = as.Date(character()),
@@ -219,61 +189,23 @@ server <- function(input, output, session) {
   observeEvent(input$end_confirm, {
     print(input$end_confirm)
     if(input$end_confirm == TRUE){
-      # Try to upload the data
-      upload_result <- tryCatch({
-        # FIXED: Properly specify table ID with project and dataset
-        table_id <- bq_table(project_id, dataset_id, paste0(input$date, "_", input$workout_name))
-        bq_table_upload(table_id, workout_log$df)
-        list(success = TRUE)
-      }, error = function(e) {
-        list(success = FALSE, message = e$message)
-      })
+      f7Notif(
+        text = "Your workout has been saved",
+        icon = f7Icon("bolt_fill"),
+        title = "Notification",
+        titleRightText = "now"
+      )
+      # insert_upload_job("black-copilot-344517", "workouts", paste0(input$date, "_", input$workout_name), workout_log$df)
+      bq_table_upload(paste0(dataset, ".", input$date, "_", input$workout_name), workout_log$df)
       
-      if (upload_result$success) {
-        f7Notif(
-          text = "Your workout has been saved",
-          icon = f7Icon("bolt_fill"),
-          title = "Success",
-          titleRightText = "now"
-        )
-      } else {
-        f7Dialog(
-          title = "Upload Error",
-          text = paste("Failed to save workout:", upload_result$message),
-          type = "alert"
-        )
-      }
     } else {
       f7Toast(text = paste("Canceled ending workout"))
     }
+
   })
   
   old_df <- reactive({
-    # Handle potential errors with the BigQuery connection
-    result <- tryCatch({
-      # FIXED: Properly specify project and dataset separately
-      dataset_ref <- bq_dataset(project_id, dataset_id)
-      tables <- bq_dataset_tables(dataset_ref)
-      
-      if (length(tables) > 0) {
-        # Create a data frame from table info
-        table_info <- lapply(tables, function(table) {
-          table_name <- table$table
-          list(
-            table_name = table_name,
-            created = format(bq_table_meta(table)$creationTime, format = "%Y-%m-%d")
-          )
-        })
-        do.call(rbind, lapply(table_info, as.data.frame))
-      } else {
-        data.frame(table_name = character(0), created = character(0))
-      }
-    }, error = function(e) {
-      # Return empty data frame with error message
-      data.frame(error = paste("Could not retrieve workout history:", e$message))
-    })
-    
-    return(result)
+    list2DF(transpose(bq_dataset_tables(dataset)))
   })
   
   output$old_workouts <- renderTable({
@@ -281,5 +213,7 @@ server <- function(input, output, session) {
   })
 }
 
-# Run the Shiny app (simplified for debugging)
+# Run the Shiny app
 shinyApp(ui, server)
+
+
