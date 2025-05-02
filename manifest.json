@@ -1878,13 +1878,13 @@
       "checksum": "05bdb783ee6514c8c072e47680af8ff7"
     },
     ".RData": {
-      "checksum": "e9d7c3903017620f26808d566fdebb25"
+      "checksum": "caa4a05c4c73fd4dd3248cfb774c132f"
     },
     ".Renviron": {
-      "checksum": "6d872122cd286c0d2968a26132a78674"
+      "checksum": "930ea7f23bba7a0c3c73b8ad114a7f40"
     },
     "01_data/client_secret_29993057763-nerqrjq60e45239uj0ds8d6l9nifsr47.apps.googleusercontent.com.json": {
-      "checksum": "f4f98781f0468f1116668f5931b0ab69"
+      "checksum": "71546de9dd41ec020983cb84230f7de5"
     },
     "01_data/workouts/20250425_run_calisthenics": {
       "checksum": "0c24bd777b9096f63827f8d0a10a1e16"
@@ -1892,14 +1892,26 @@
     "01_data/workouts/run_calisthenics_20250425": {
       "checksum": "0c24bd777b9096f63827f8d0a10a1e16"
     },
-    "app.R": {
-      "checksum": "0906d9efa5a48ac649655ade3ac89c8d"
+    "03_documtents/black-copilot-334517-2b1124775ec1.json": {
+      "checksum": "9f3386cfad02a2c036f4816e9147d6f6"
     },
-    "old_app.R": {
-      "checksum": "1140179f70911eb48a05e3231e9ba729"
+    "app_new.R": {
+      "checksum": "b91e7c7522d3bf441bf8332b15f09b3b"
+    },
+    "app.R": {
+      "checksum": "3c0d6fa31b8d2c3a44139226005ef33d"
+    },
+    "debug_json.txt": {
+      "checksum": "9b79dd9ae459b8d249aac8f3ffa2c99f"
     },
     "README.md": {
       "checksum": "41596d73e460d02f159503e111c647e3"
+    },
+    "sa-base64.txt": {
+      "checksum": "a0112f28ecc09ca7bdb330cbbb3a43e3"
+    },
+    "sa-min.json": {
+      "checksum": "9b79dd9ae459b8d249aac8f3ffa2c99f"
     }
   },
   "users": null
