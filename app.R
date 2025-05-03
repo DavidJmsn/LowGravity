@@ -47,7 +47,7 @@ ui <- f7Page(
       id        = "tabset",
       animated  = F,
       style     = "toolbar",
-      # swipeable = TRUE,
+      swipeable = TRUE,
       # New Set Tab
       f7Tab(
         tabName = "new_set", title = "New Set", icon = f7Icon("text_badge_plus"), active = TRUE,
