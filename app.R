@@ -4,14 +4,13 @@ library(bigrquery)
 library(data.table)
 library(gargle)
 
-# Launch in browser by default
-theme_ios <- list(theme = 'ios')
+# App configuration
 options(shiny.launch.browser = TRUE)
+theme_ios <- list(theme = 'ios')
 
 # Authentication setup
 project_id <- Sys.getenv("project_id")
 ds <- Sys.getenv("dataset")
-# dataset <- paste0(project_id, ".", ds)
 dataset <- bq_dataset(project_id, ds)
 bigrquery::bq_deauth()
 service_json <- Sys.getenv("service_account")
@@ -43,69 +42,90 @@ ui <- f7Page(
       )
     ),
     navbar = f7Navbar(title = "Low Gravity", rightPanel = TRUE),
-    f7Tabs(
-      id        = "tabset",
-      animated  = F,
-      style     = "toolbar",
-      # swipeable = TRUE,
-      # New Set Tab
-      f7Tab(
-        tabName = "new_set", title = "New Set", icon = f7Icon("text_badge_plus"), active = TRUE,
-        f7List(
-          f7Grid(
-            cols = 2, gap = TRUE,
-            f7DatePicker("date", NULL, placeholder = as.character(Sys.Date())),
-            f7Toggle("auto_inc", "Keep inputs"),
-            f7Text("workout_name", NULL, placeholder = "Workout Name"),
-            f7Select(
-              "exercise", NULL,
-              choices  = c("pullup","dip","pushup","run","lsit","chinup","Other"),
-              selected = "pullup"
-            ),
-            f7Text("set", NULL, placeholder = "Set"),
-            f7Text("reps", NULL, placeholder = "Reps/Time"),
-            f7Text("resistance", NULL, placeholder = "Resistance"),
-            f7Select(
-              "unit", NULL,
-              choices  = c("lbs","Kg","Metres","Km","Sec","Min","Other"),
-              selected = "lbs"
+    # Apply full-height class to container
+    div(class = "page-content height-100",
+        f7Tabs(
+          id        = "tabset",
+          animated  = FALSE,
+          style     = "toolbar",
+          swipeable = TRUE,
+          # New Set Tab
+          f7Tab(
+            tabName = "new_set", title = "New Set", icon = f7Icon("text_badge_plus"), active = TRUE,
+            div(class = "page-content height-100", style = "width: 100%;",
+                f7List(#class = "width-100",
+                       f7Grid(
+                         cols = 2, gap = TRUE,
+                         f7DatePicker("date", NULL, placeholder = as.character(Sys.Date())),
+                         f7Toggle("auto_inc", "Keep inputs"),
+                         f7Text("workout_name", NULL, placeholder = "Workout Name"),
+                         f7Select(
+                           "exercise", NULL,
+                           choices  = c("pullup", "dip", "pushup", "run", "lsit", "chinup", "Other"),
+                           selected = "pullup"
+                         ),
+                         f7Text("set", NULL, placeholder = "Set"),
+                         f7Text("reps", NULL, placeholder = "Reps/Time"),
+                         f7Text("resistance", NULL, placeholder = "Resistance"),
+                         f7Select(
+                           "unit", NULL,
+                           choices  = c("lbs", "Kg", "Metres", "Km", "Sec", "Min", "Other"),
+                           selected = "lbs"
+                         )
+                       ),
+                       conditionalPanel("input.unit == 'Other'",
+                                        f7Text("unit_other", NULL, placeholder = "Unit")
+                       ),
+                       f7Slider("effort", "Effort", 1, 10, value = 5, step = 1,
+                                scale = TRUE, scaleSteps = 9, scaleSubSteps = 0
+                       ),
+                       f7Card(
+                       div(style = "width: 100%",
+                           f7Button("add_set", "Add Set", icon = f7Icon("plus"), fill = TRUE) %>%
+                             tagAppendAttributes(style = "width: 100%;")
+                       )
+                       )
+                )
             )
           ),
-          conditionalPanel("input.unit == 'Other'",
-                           f7Text("unit_other", NULL, placeholder = "Unit")
+          # Workout Tab
+          f7Tab(
+            tabName = "workout", title = "Workout", icon = f7Icon("play"),
+            div(class = "page-content height-100", style = "width: 100%; padding: 10px;",
+                f7Block(
+                  inset = TRUE, strong = TRUE, style = "width: 100%;",
+                  uiOutput("workout_table_ui")
+                ),
+                div(style = "display: flex; flex-direction: column; gap: 10px; width: 100%;",
+                    f7Card(style = "width: 100%; margin: 0;",
+                           f7Button("end_workout", "End Workout", icon = f7Icon("flag_circle_fill")) %>% 
+                             tagAppendAttributes(style = "width: 100%;")
+                    ),
+                    f7Card(style = "width: 100%; margin: 0;",
+                           f7Button("edit_workout", "Edit", icon = f7Icon("pencil"), color = "blue", fill = FALSE) %>%
+                             tagAppendAttributes(style = "width: 100%;")
+                    )
+                )
+            )
           ),
-          f7Slider("effort", "Effort", 1, 10, value = 5, step = 1,
-                   scale = TRUE, scaleSteps = 9, scaleSubSteps = 0
-          ),
-          f7Button("add_set", "Add Set", icon = f7Icon("plus"), fill = TRUE)
+          # History Tab
+          f7Tab(
+            tabName = "history", title = "History", icon = f7Icon("timer"),
+            div(class = "page-content height-100", style = "width: 100%; padding: 10px;",
+                f7Card(style = "width: 100%; margin: 0;", 
+                       uiOutput("old_workouts_ui")
+                )
+            )
+          )
         )
-      ),
-      # Workout Tab
-      f7Tab(
-        tabName = "workout", title = "Workout", icon = f7Icon("play"),
-        f7Block(inset = TRUE, strong = TRUE, 
-                uiOutput("workout_table_ui")
-        ),
-        f7Card(
-          f7Button("end_workout", "End Workout", icon = f7Icon("flag_circle_fill")),
-        ),
-        f7Card(
-          f7Button("edit_workout", "Edit", icon = f7Icon("pencil"), color = "blue", fill = FALSE)
-        )
-      ),
-      # History Tab
-      f7Tab(
-        tabName = "history", title = "History", icon = f7Icon("timer"),
-        f7Card(uiOutput("old_workouts_ui"))
-      )
     )
   )
 )
 
 # Server logic
 server <- function(input, output, session) {
-  # Use data.table for efficient row binding
-  workout_log <- reactiveVal(setDT(list(
+  # Initialize reactive values
+  workout_log <- reactiveVal(data.table(
     date         = as.Date(character()),
     workout_name = character(),
     workout      = character(),
@@ -114,17 +134,26 @@ server <- function(input, output, session) {
     resistance   = character(),
     unit         = character(),
     effort       = numeric()
-  )))
-  
-  # Edit mode toggle
+  ))
   edit_mode <- reactiveVal(FALSE)
-  
-  # Store the workouts history data
   workouts_history <- reactiveVal(NULL)
-  
-  # Store the selected workout data for the popup
   selected_workout_data <- reactiveVal(NULL)
   
+  # Helper function to reset workout log
+  reset_workout_log <- function() {
+    workout_log(data.table(
+      date         = as.Date(character()),
+      workout_name = character(),
+      workout      = character(),
+      set          = numeric(),
+      reps         = character(),
+      resistance   = character(),
+      unit         = character(),
+      effort       = numeric()
+    ))
+  }
+  
+  # Add set to workout log
   observeEvent(input$add_set, {
     # Validate required inputs
     req(
@@ -170,19 +199,16 @@ server <- function(input, output, session) {
     }
   })
   
+  # Quit application
   observeEvent(input$quit, stopApp())
   
   # Toggle edit mode
   observeEvent(input$edit_workout, {
     edit_mode(!edit_mode())
-    if (edit_mode()) {
-      f7Toast(text = "Edit mode enabled")
-    } else {
-      f7Toast(text = "Edit mode disabled")
-    }
+    f7Toast(text = paste(ifelse(edit_mode(), "Edit mode enabled", "Edit mode disabled")))
   })
   
-  # Create observers for each row's buttons dynamically
+  # Row editing buttons observers
   observe({
     log_data <- workout_log()
     if (nrow(log_data) > 0 && edit_mode()) {
@@ -281,7 +307,8 @@ server <- function(input, output, session) {
             })
           )
         ),
-        f7Button("edit_done", "Done", color = "green", fill = TRUE)
+        f7Button("edit_done", "Done", color = "green", fill = TRUE) %>%
+          tagAppendAttributes(style = "width: 100%;")
       )
     } else {
       # Regular table
@@ -292,7 +319,7 @@ server <- function(input, output, session) {
   # Regular table output
   output$workout_table <- renderTable({
     workout_log()[, .(workout, set, reps, resistance)]
-  })
+  }, width = "100%", align = "left")
   
   # Exit edit mode
   observeEvent(input$edit_done, {
@@ -313,17 +340,33 @@ server <- function(input, output, session) {
   # Handle confirmation
   observeEvent(input$end_confirm, {
     if (isTRUE(input$end_confirm)) {
-      f7Notif(
-        text           = "Your workout has been saved",
-        icon           = f7Icon("bolt_fill"),
-        title          = "Notification",
-        titleRightText = "now"
-      )
+      # Validate workout name for BigQuery table name
+      if (!nzchar(input$workout_name)) {
+        f7Toast(text = "Please provide a workout name before saving")
+        return()
+      }
+      
+      log_data <- workout_log()
+      if (nrow(log_data) == 0) {
+        f7Toast(text = "No workout data to save")
+        return()
+      }
+      
       # Upload to BigQuery
-      bq_table_upload(
-        paste0(project_id, ".", ds, ".", input$date, "_", input$workout_name),
-        workout_log()
-      )
+      table_name <- paste0(project_id, ".", ds, ".", input$date, "_", input$workout_name)
+      tryCatch({
+        bq_table_upload(table_name, log_data)
+        f7Notif(
+          text           = "Your workout has been saved",
+          icon           = f7Icon("bolt_fill"),
+          title          = "Notification",
+          titleRightText = "now"
+        )
+        # Reset workout log after successful save
+        reset_workout_log()
+      }, error = function(e) {
+        f7Toast(text = paste("Error saving workout:", e$message))
+      })
     } else {
       # Show discard confirmation when cancel is clicked
       f7Dialog(
@@ -338,17 +381,7 @@ server <- function(input, output, session) {
   # Handle discard confirmation
   observeEvent(input$discard_confirm, {
     if (isTRUE(input$discard_confirm)) {
-      # Reset workout log
-      workout_log(setDT(list(
-        date         = as.Date(character()),
-        workout_name = character(),
-        workout      = character(),
-        set          = numeric(),
-        reps         = character(),
-        resistance   = character(),
-        unit         = character(),
-        effort       = numeric()
-      )))
+      reset_workout_log()
       f7Toast(text = "Workout discarded")
     } else {
       f7Toast(text = "Continued workout")
@@ -358,14 +391,23 @@ server <- function(input, output, session) {
   # Get the historic workouts data
   get_workouts_history <- function() {
     # Get tables from the dataset
-    tables <- bq_dataset_tables(paste0(project_id, ".", ds))
+    tables <- tryCatch({
+      bq_dataset_tables(dataset)
+    }, error = function(e) {
+      message("Error fetching tables:", e$message)
+      return(list())
+    })
+    
+    if (length(tables) == 0) {
+      return(data.frame())
+    }
     
     # Initialize the result data frame
     result <- data.frame(
       Workout = character(),
       Date = character(),
       Sets = integer(),
-      TableName = character(),  # Store the full table name for fetching data later
+      TableName = character(),
       stringsAsFactors = FALSE
     )
     
@@ -378,19 +420,18 @@ server <- function(input, output, session) {
       date_pattern <- "^(\\d{4}-\\d{2}-\\d{2}|\\d{8})_(.+)$"
       date_match <- regmatches(table_name, regexec(date_pattern, table_name))
       
-      # Try to get row count directly from table metadata
+      # Try to get row count from table metadata
       tryCatch({
-        # Create a table reference
         table_ref <- bq_table(table_obj$project, table_obj$dataset, table_obj$table)
-        # Get table metadata which includes row count
         table_info <- bq_table_meta(table_ref)
         row_count <- as.integer(table_info$numRows)
         
+        # Parse date and workout name
         if (length(date_match[[1]]) > 0) {
           date_str <- date_match[[1]][2]
           workout_name <- date_match[[1]][3]
           
-          # Format date for display if it's in YYYYMMDD format
+          # Format date if it's in YYYYMMDD format
           if (nchar(date_str) == 8) {
             date_str <- paste0(
               substr(date_str, 1, 4), "-",
@@ -418,12 +459,12 @@ server <- function(input, output, session) {
           ))
         }
       }, error = function(e) {
-        # If we can't get row count, just show "N/A"
+        # If we can't get row count, show "N/A"
         if (length(date_match[[1]]) > 0) {
           date_str <- date_match[[1]][2]
           workout_name <- date_match[[1]][3]
           
-          # Format date for display if it's in YYYYMMDD format
+          # Format date if it's in YYYYMMDD format
           if (nchar(date_str) == 8) {
             date_str <- paste0(
               substr(date_str, 1, 4), "-",
@@ -432,8 +473,7 @@ server <- function(input, output, session) {
             )
           }
           
-          # Add to result with the full table name
-          result <<- rbind(result, data.frame(
+          result <- rbind(result, data.frame(
             Workout = workout_name,
             Date = date_str,
             Sets = "N/A",
@@ -441,8 +481,7 @@ server <- function(input, output, session) {
             stringsAsFactors = FALSE
           ))
         } else {
-          # If pattern doesn't match, just use the table name
-          result <<- rbind(result, data.frame(
+          result <- rbind(result, data.frame(
             Workout = table_name,
             Date = "",
             Sets = "N/A",
@@ -479,6 +518,7 @@ server <- function(input, output, session) {
     # Create a table with View buttons
     tags$table(
       class = "table",
+      style = "width: 100%;",
       tags$thead(
         tags$tr(
           tags$th("Workout"),
@@ -507,7 +547,6 @@ server <- function(input, output, session) {
   })
   
   # Create observers for each View button
-  # Create observers for each View button
   observe({
     history_data <- workouts_history()
     if (!is.null(history_data) && nrow(history_data) > 0) {
@@ -517,11 +556,10 @@ server <- function(input, output, session) {
           table_name <- history_data$TableName[i]
           workout_title <- paste0(history_data$Date[i], " - ", history_data$Workout[i])
           
-          # Query the table data from BigQuery with proper backticks for escaping identifiers
+          # Properly escape identifiers in the query
           query <- sprintf("SELECT * FROM `%s.%s.%s`", project_id, ds, table_name)
           
           tryCatch({
-            print(paste("Executing query:", query))
             workout_data <- bq_project_query(project_id, query) %>% bq_table_download()
             selected_workout_data(workout_data)
             
@@ -532,59 +570,23 @@ server <- function(input, output, session) {
               f7Block(
                 h4(paste("Workout:", history_data$Workout[i])),
                 h4(paste("Date:", history_data$Date[i])),
-                tableOutput("popup_workout_table")
+                tableOutput("popup_workout_table") %>% 
+                  tagAppendAttributes(style = "width: 100%;")
               )
             )
           }, error = function(e) {
-            # More detailed error logging
             error_msg <- paste("Error loading workout data:", e$message)
-            print(error_msg)
-            print(paste("Failed query:", query))
+            message(error_msg)
             f7Toast(text = error_msg)
           })
         }, ignoreInit = TRUE)
       })
     }
   })
-  # observe({
-  #   history_data <- workouts_history()
-  #   if (!is.null(history_data) && nrow(history_data) > 0) {
-  #     lapply(1:nrow(history_data), function(i) {
-  #       observeEvent(input[[paste0("view_workout_", i)]], {
-  #         # Get the table name
-  #         table_name <- history_data$TableName[i]
-  #         workout_title <- paste0(history_data$Date[i], " - ", history_data$Workout[i])
-  #         
-  #         # Query the table data from BigQuery
-  #         query <- paste0("SELECT * FROM ", paste0(project_id, ".", ds), ".", table_name, "")
-  #         
-  #         tryCatch({
-  #           workout_data <- bq_project_query(project_id, query) %>% bq_table_download()
-  #           selected_workout_data(workout_data)
-  #           
-  #           # Show the popup with the workout data
-  #           f7Popup(
-  #             id = "workout_detail_popup",
-  #             title = workout_title,
-  #             f7Block(
-  #               h4(paste("Workout:", history_data$Workout[i])),
-  #               h4(paste("Date:", history_data$Date[i])),
-  #               tableOutput("popup_workout_table")
-  #             )
-  #           )
-  #         }, error = function(e) {
-  #           f7Toast(text = paste("Error loading workout data:", e$message))
-  #           cat("\n", paste0( "Error loading workout data: ", e$message, "\n"))
-  #         })
-  #       }, ignoreInit = TRUE)
-  #     })
-  #   }
-  # })
   
   # Render the workout details in the popup
   output$popup_workout_table <- renderTable({
     workout_data <- selected_workout_data()
-    print(workout_data)
     if (!is.null(workout_data)) {
       # Select and format columns for display
       if ("workout" %in% names(workout_data) && "set" %in% names(workout_data) && 
@@ -595,7 +597,7 @@ server <- function(input, output, session) {
         workout_data
       }
     }
-  })
+  }, width = "100%", align = "left")
 }
 
 # Run app
