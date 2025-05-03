@@ -88,6 +88,8 @@ ui <- f7Page(
         ),
         f7Card(
           f7Button("end_workout", "End Workout", icon = f7Icon("flag_circle_fill")),
+        ),
+        f7Card(
           f7Button("edit_workout", "Edit", icon = f7Icon("pencil"), color = "blue", fill = FALSE)
         )
       ),
